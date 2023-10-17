@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Three.js Image Gallery</title>
+</head>
+<body>
+  <div id="gallery"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
+  <script>
+    const galleryElement = document.getElementById('gallery');
+
+    // Fetch image URLs from the server
+    fetch('/images')
+      .then(response => response.json())
+      .then(imageUrls => {
+        // Create a Three.js scene and display images
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        galleryElement.appendChild(renderer.domElement);
+
+        imageUrls.forEach((imageUrl, index) => {
+          const loader = new THREE.TextureLoader();
+          loader.load(imageUrl, texture => {
+            const geometry = new THREE.PlaneGeometry(1, 1);
+            const material = new THREE.MeshBasicMaterial({ map: texture });
+            const plane = new THREE.Mesh(geometry, material);
+
+            // Arrange images in a grid
+            const row = Math.floor(index / 3);
+            const col = index % 3;
+            plane.position.set(col - 1, 1 - row, 0);
+
+            scene.add(plane);
+          });
+        });
+
+        camera.position.z = 5;
+
+        // Animation loop
+        const animate = () => {
+          requestAnimationFrame(animate);
+          renderer.render(scene, camera);
+        };
+
+        animate();
+      })
+      .catch(error => {
+        console.error('Error fetching image URLs:', error);
+      });
+  </script>
+</body>
+</html>
