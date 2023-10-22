@@ -15,8 +15,8 @@ from Interactable import Interactable # Interactable zones/items for characters
 # TODO -- add little reward things?
 
 # Constants
-WINDOW_WIDTH = 1000
-WINDOW_HEIGHT = 1000
+WINDOW_WIDTH = 1920
+WINDOW_HEIGHT = 1080
 
 IMAGE_SIZE = 100
 
@@ -100,69 +100,75 @@ debug = True
 # Initialize
 n_clicks = 0
 begun = False
+circles = []
+last_update_time = 0
+pos1 = 0
+pos2 = 0
 
-def handle_setup():
+# Handles the setup, takes in the various vars and then outputs them
+def handle_setup(pos1, pos2, n_clicks, begun, circles, colliders, screen, last_update_time, state):
     print('setup')
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        # handle MOUSEBUTTONUP
+        if event.type == pygame.MOUSEBUTTONUP: # For getting mouse positions to set colliders
+            if begun == True:
+                if n_clicks == 0:
+                    print('0')
+                    # Place initial circle, store first x/y
+                    pos1 = pygame.mouse.get_pos()
+                    pygame.draw.circle(screen,CIRCLE_COLOR,(pos1[0],pos1[1]),CIRCLE_RADIUS) # DRAW CIRCLE
+                    pygame.display.flip()
+                    print("first position: " + str(pos1))
+                    n_clicks = n_clicks + 1
+                elif n_clicks == 1:
+                    print('1')                    
+                    pos2 = pygame.mouse.get_pos()
+                    pygame.draw.circle(screen,CIRCLE_COLOR,(pos2[0],pos2[1]),CIRCLE_RADIUS) # DRAW CIRCLE
+                    pygame.display.flip()
+                    print("second position: " + str(pos2))
+                    n_clicks = n_clicks + 1
+                else:# n_clicks == 2:
+                    # Create the rect, create a rect
+                    new_collider = Collider(pos1[0], pos1[1], pos2[0], pos2[1])
+                    colliders.append(new_collider)
+                    print('Num colliders:')
+                    print(len(colliders))
+                    # Clear the screen
+                    screen.fill((255, 255, 255))
+                    # Draw the background
+                    background.draw(screen)
+                    n_clicks = 0
+
+        if event.type == pygame.KEYDOWN:
+            # Start the setup
+            if event.key == pygame.K_SPACE:
+                print('start setup')
+                begun = True
+                n_clicks = 0
+                # Clear the screen
+                screen.fill((255, 255, 255))
+                # Draw the background
+                background.draw(screen)
+            # Start the simulation
+            if event.key == pygame.K_RETURN:
+                print('start simulation')
+                n_clicks = 0
+                last_update_time = time.time()
+                # Clear the screen
+                screen.fill((255, 255, 255))
+                # Draw the background
+                background.draw(screen)
+                # Change the mode
+                state = 'running'
+    return pos1, pos2, n_clicks, begun, circles, colliders, screen, last_update_time, state
 
 while running:
     # State == 'setup
     # --------------------------------------------
     if state == 'setup':
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            circles = []
-            # handle MOUSEBUTTONUP
-            if event.type == pygame.MOUSEBUTTONUP: # For getting mouse positions to set colliders
-                if begun == True:
-                    if n_clicks == 0:
-                        print('0')
-                        # Place initial circle, store first x/y
-                        pos1 = pygame.mouse.get_pos()
-                        pygame.draw.circle(screen,CIRCLE_COLOR,(pos1[0],pos1[1]),CIRCLE_RADIUS) # DRAW CIRCLE
-                        pygame.display.flip()
-                        print("first position: " + str(pos1))
-                        n_clicks = n_clicks + 1
-                    elif n_clicks == 1:
-                        print('1')                    
-                        pos2 = pygame.mouse.get_pos()
-                        pygame.draw.circle(screen,CIRCLE_COLOR,(pos2[0],pos2[1]),CIRCLE_RADIUS) # DRAW CIRCLE
-                        pygame.display.flip()
-                        print("second position: " + str(pos2))
-                        n_clicks = n_clicks + 1
-                    else:# n_clicks == 2:
-                        # Create the rect, create a rect
-                        new_collider = Collider(pos1[0], pos1[1], pos2[0], pos2[1])
-                        colliders.append(new_collider)
-                        print('Num colliders:')
-                        print(len(colliders))
-                        # Clear the screen
-                        screen.fill((255, 255, 255))
-                        # Draw the background
-                        background.draw(screen)
-                        n_clicks = 0
-
-            if event.type == pygame.KEYDOWN:
-                # Start the setup
-                if event.key == pygame.K_SPACE:
-                    print('start setup')
-                    begun = True
-                    n_clicks = 0
-                    # Clear the screen
-                    screen.fill((255, 255, 255))
-                    # Draw the background
-                    background.draw(screen)
-                # Start the simulation
-                if event.key == pygame.K_RETURN:
-                    print('start simulation')
-                    n_clicks = 0
-                    last_update_time = time.time()
-                    # Clear the screen
-                    screen.fill((255, 255, 255))
-                    # Draw the background
-                    background.draw(screen)
-                    # Change the mode
-                    state = 'running'
+        pos1, pos2, n_clicks, begun, circles, colliders, screen, last_update_time, state = handle_setup(pos1, pos2, n_clicks, begun, circles, colliders, screen, last_update_time, state)
     # State == running
     # --------------------------------------------
     else:

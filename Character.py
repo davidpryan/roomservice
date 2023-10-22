@@ -5,8 +5,8 @@ import time
 import math
 from pygame.locals import K_SPACE
 # Constants
-WINDOW_WIDTH = 1000
-WINDOW_HEIGHT = 1000
+WINDOW_WIDTH = 1920
+WINDOW_HEIGHT = 1080
 
 IMAGE_SIZE = 100
 
