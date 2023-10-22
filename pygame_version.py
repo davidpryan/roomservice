@@ -5,6 +5,14 @@ import time
 import math
 from pygame.locals import K_SPACE
 
+# Import classes
+from Character import Character # characters that walk around
+from Building import Building
+from Background import Background
+from Collider import Collider # no-go zones for walking characters
+from Interactable import Interactable # Interactable zones/items for characters
+
+# TODO -- add little reward things?
 
 # Constants
 WINDOW_WIDTH = 1000
@@ -20,22 +28,28 @@ CHARACTER_SIZE = 100
 CHARACTER_DIRECTORY = "./characters"
 BUILDING_DIRECTORY = "./buildings"
 BACKGROUND_DIRECTORY = "./background"
+INTERACTABLE_DIRECTORY = "./interactable"
 
 MOVEMENT_SPEED = 16  # Pixels per millisecond
-UPDATE_INTERVAL_MS = 30  # Milliseconds (changed from 50)
+UPDATE_INTERVAL_MS = 10  # Milliseconds (changed from 50)
 COLLISION_COOLDOWN_MS = 1000  # Milliseconds (1 second)
 
 NEW_FILES_CHECK_INTERVAL = 5  # Seconds
 
 BUILDING_LOCATIONS = []
 
-def get_building_locations():
-    # Could do this programatically, but why not just set it vOv
-    return [[100,100],[200,100],[300,100],[600,100],[700,100],[800,100]
-            , [100,400],[200,400],[300,400],[600,400],[700,400],[800,400]
-            ]
-    
-BUILDING_LOCATIONS = get_building_locations()
+COLLIDERS = {}
+
+CIRCLE_COLOR = (200,0,0)
+CIRCLE_RADIUS = 10
+
+# TODO -- add ability to add 'enrichment' --> paid???? cooldown between times you can add them?
+
+# Add some basic activities
+# Walk -- place to place
+# Sit -- hangout
+# Appear
+
 # Initialize Pygame
 pygame.init()
 
@@ -45,6 +59,9 @@ screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 # Set the title of the window
 pygame.display.set_caption("Character Viewer")
 
+# Lists to track active character filenames
+active_character_filenames = []
+
 # Function to get a list of filenames in the directory
 def get_filenames(directory):
     filenames = []
@@ -53,119 +70,19 @@ def get_filenames(directory):
             filenames.append(filename)
     return filenames
 
-# Function to load characters and buildings from directories
-def load_characters_and_buildings(active_character_filenames, active_building_filenames):
+# Function to load characters directories
+def load_characters(active_character_filenames):
     character_filenames = get_filenames(CHARACTER_DIRECTORY)
-    building_filenames = get_filenames(BUILDING_DIRECTORY)
-    
     # Remove active filenames from the list of available filenames
     available_character_filenames = [filename for filename in character_filenames if filename not in active_character_filenames]
-    available_building_filenames = [filename for filename in building_filenames if filename not in active_building_filenames]
-    
     characters = [Character(filename) for filename in available_character_filenames]
-
-    buildings = []
-    # Add up to enough buildings to fill in every building location
-    i = 0
-    print('lens')
-    print(len(BUILDING_LOCATIONS))
-    print(len(available_building_filenames))
-    while i < len(BUILDING_LOCATIONS) and i < len(available_building_filenames):
-
-        buildings.extend([Building(available_building_filenames[i], BUILDING_LOCATIONS[i][0], BUILDING_LOCATIONS[i][1]) ])
-        print(BUILDING_LOCATIONS[i][0])
-        print(BUILDING_LOCATIONS[i][1])
-        i = i + 1
-    
     # Update active filenames with the new filenames
-    active_character_filenames.extend(available_character_filenames)
-    active_building_filenames.extend(available_building_filenames)
-    
-    return characters, buildings
+    active_character_filenames.extend(available_character_filenames)    
+    return characters
 
-# Class to encapsulate character behavior
-class Character:
-    def __init__(self, filename):
-        self.image = pygame.transform.scale(pygame.image.load(os.path.join(CHARACTER_DIRECTORY, filename)), (IMAGE_SIZE, IMAGE_SIZE))
-        self.position = [random.randint(0, WINDOW_WIDTH - IMAGE_SIZE), random.randint(0, WINDOW_HEIGHT - IMAGE_SIZE)]
-        self.direction = [random.choice([1, -1]), random.choice([1, -1])]
-        self.collision_cooldown = 0  # Cooldown timer for collision response
-        self.filename = filename
-
-    def update(self, elapsed_time, buildings):
-        x, y = self.position
-        dx, dy = self.direction
-
-        if self.collision_cooldown > 0:
-            # Move directly away from the last collided building
-            delta_x = dx * MOVEMENT_SPEED * elapsed_time
-            delta_y = dy * MOVEMENT_SPEED * elapsed_time
-            x += delta_x
-            y += delta_y
-
-            self.collision_cooldown -= elapsed_time
-
-            # After cooldown, reset direction
-            if self.collision_cooldown <= 0:
-                self.direction = [random.choice([1, -1]), random.choice([1, -1])]
-        else:
-            # Update character position based on speed and elapsed time
-            delta_x = dx * MOVEMENT_SPEED * elapsed_time
-            delta_y = dy * MOVEMENT_SPEED * elapsed_time
-
-            x += delta_x
-            y += delta_y
-
-            # Check for collisions with window edges and bounce
-            if x < 0 or x > WINDOW_WIDTH - IMAGE_SIZE:
-                dx = -dx
-            if y < 0 or y > WINDOW_HEIGHT - IMAGE_SIZE:
-                dy = -dy
-
-            # Check for collisions with buildings and change direction
-            for building in buildings:
-                if self.collide_with(building.rect):
-                    dx = -dx
-                    dy = -dy
-                    self.collision_cooldown = COLLISION_COOLDOWN_MS / 1000  # Set cooldown timer
-                    break
-
-            self.position = [x, y]
-            self.direction = [dx, dy]
-
-    def draw(self, screen):
-        screen.blit(self.image, self.position)
-
-    def collide_with(self, rect):
-        character_rect = pygame.Rect(self.position[0], self.position[1], IMAGE_SIZE, IMAGE_SIZE)
-        return character_rect.colliderect(rect)
-
-# Class to encapsulate building behavior
-class Building:
-    def __init__(self, filename, x, y):
-        self.image = pygame.transform.scale(pygame.image.load(os.path.join(BUILDING_DIRECTORY, filename)), (BUILDING_X, BUILDING_Y))
-        self.position = [x,y]
-        self.rect = pygame.Rect(self.position[0], self.position[1], BUILDING_X, BUILDING_Y)
-        self.filename = filename
-
-    def draw(self, screen):
-        screen.blit(self.image, self.position)
-        print(self.position)
-
-# Class to encapsulate background behavior
-class Background:
-    def __init__(self, filename):
-        self.image = pygame.transform.scale(pygame.image.load(os.path.join(BACKGROUND_DIRECTORY, filename)), (WINDOW_WIDTH, WINDOW_HEIGHT))
-
-    def draw(self, screen):
-        screen.blit(self.image, (0, 0))
-
-# Lists to track active character and building filenames
-active_character_filenames = []
-active_building_filenames = []
-
-# Load initial characters, buildings, and background
-characters, buildings = load_characters_and_buildings(active_character_filenames, active_building_filenames)
+# Load initial characters, colliders, backgrounds
+characters = load_characters(active_character_filenames)
+colliders = []#instantiate_colliders()
 background = Background(get_filenames(BACKGROUND_DIRECTORY)[0])
 
 # Track the time for checking new files
@@ -176,53 +93,143 @@ clock = pygame.time.Clock()
 
 # Main loop
 running = True
-last_update_time = time.time()
+state = 'setup' # Start in the 'setup' phase
+
+debug = True
+
+# Initialize
+n_clicks = 0
+begun = False
+
+def handle_setup():
+    print('setup')
 
 while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+    # State == 'setup
+    # --------------------------------------------
+    if state == 'setup':
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            circles = []
+            # handle MOUSEBUTTONUP
+            if event.type == pygame.MOUSEBUTTONUP: # For getting mouse positions to set colliders
+                if begun == True:
+                    if n_clicks == 0:
+                        print('0')
+                        # Place initial circle, store first x/y
+                        pos1 = pygame.mouse.get_pos()
+                        pygame.draw.circle(screen,CIRCLE_COLOR,(pos1[0],pos1[1]),CIRCLE_RADIUS) # DRAW CIRCLE
+                        pygame.display.flip()
+                        print("first position: " + str(pos1))
+                        n_clicks = n_clicks + 1
+                    elif n_clicks == 1:
+                        print('1')                    
+                        pos2 = pygame.mouse.get_pos()
+                        pygame.draw.circle(screen,CIRCLE_COLOR,(pos2[0],pos2[1]),CIRCLE_RADIUS) # DRAW CIRCLE
+                        pygame.display.flip()
+                        print("second position: " + str(pos2))
+                        n_clicks = n_clicks + 1
+                    else:# n_clicks == 2:
+                        # Create the rect, create a rect
+                        new_collider = Collider(pos1[0], pos1[1], pos2[0], pos2[1])
+                        colliders.append(new_collider)
+                        print('Num colliders:')
+                        print(len(colliders))
+                        # Clear the screen
+                        screen.fill((255, 255, 255))
+                        # Draw the background
+                        background.draw(screen)
+                        n_clicks = 0
 
-    current_time = time.time()
-    elapsed_time = current_time - last_update_time
+            if event.type == pygame.KEYDOWN:
+                # Start the setup
+                if event.key == pygame.K_SPACE:
+                    print('start setup')
+                    begun = True
+                    n_clicks = 0
+                    # Clear the screen
+                    screen.fill((255, 255, 255))
+                    # Draw the background
+                    background.draw(screen)
+                # Start the simulation
+                if event.key == pygame.K_RETURN:
+                    print('start simulation')
+                    n_clicks = 0
+                    last_update_time = time.time()
+                    # Clear the screen
+                    screen.fill((255, 255, 255))
+                    # Draw the background
+                    background.draw(screen)
+                    # Change the mode
+                    state = 'running'
+    # State == running
+    # --------------------------------------------
+    else:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            # handle MOUSEBUTTONUP
+            if event.type == pygame.MOUSEBUTTONUP: # For getting mouse positions to set colliders
+                pos = pygame.mouse.get_pos()
+                print(pos)
+            if event.type == pygame.KEYDOWN:
+                # Start the setup
+                if event.key == pygame.K_SPACE:
+                    print('start setup')
+                    begun = True
+                    n_clicks = 0
+                    colliders = []
+                    characters = []
+                    # Clear the screen
+                    screen.fill((255, 255, 255))
+                    # Draw the background
+                    background.draw(screen)
+                    state = 'setup'
 
-    # Limit the frame rate to approximately 60 FPS
-    clock.tick(60)
+        
+        current_time = time.time()
+        elapsed_time = current_time - last_update_time
 
-    if elapsed_time >= UPDATE_INTERVAL_MS / 1000:  # Convert milliseconds to seconds
-        # Update character positions and handle bouncing
+        # Limit the frame rate to approximately 60 FPS
+        clock.tick(60)
+
+        if elapsed_time >= UPDATE_INTERVAL_MS / 1000:  # Convert milliseconds to seconds
+            # Update character positions and handle bouncing
+            for character in characters:
+                # Should also handle interactables here...
+                character.update(elapsed_time, colliders)
+
+            last_update_time = current_time
+
+        # Check for new characters and buildings at regular intervals
+        if current_time - last_new_files_check_time >= NEW_FILES_CHECK_INTERVAL:
+            new_characters = load_characters(active_character_filenames)
+
+            # Append new characters to the existing lists
+            characters.extend(new_characters)
+
+            # Update active character filenames
+            active_character_filenames.extend([character.filename for character in new_characters])
+
+            last_new_files_check_time = current_time
+        
+# Drawing
+# ----------------------------------------------------
+    if state == 'setup':
+        for c in colliders:
+            c.draw(screen)
+    # draw characters
+    if state != 'setup':
+        # # Clear the screen
+        screen.fill((255, 255, 255))
+        # # Draw the background
+        background.draw(screen)
         for character in characters:
-            character.update(elapsed_time, buildings)
-
-        last_update_time = current_time
-
-    # Check for new characters and buildings at regular intervals
-    if current_time - last_new_files_check_time >= NEW_FILES_CHECK_INTERVAL:
-        new_characters, new_buildings = load_characters_and_buildings(active_character_filenames, active_building_filenames)
-
-        # Append new characters and buildings to the existing lists
-        characters.extend(new_characters)
-        buildings.extend(new_buildings)
-
-        # Update active character and building filenames
-        active_character_filenames.extend([character.filename for character in new_characters])
-        active_building_filenames.extend([building.filename for building in new_buildings])
-
-        last_new_files_check_time = current_time
-
-    # Clear the screen
-    screen.fill((255, 255, 255))
-
-    # Draw the background
-    background.draw(screen)
-
-    # Draw the buildings
-    for building in buildings:
-        building.draw(screen)
-
-    # Draw the characters at their updated positions
-    for character in characters:
-        character.draw(screen)
+            character.draw(screen)
+        if debug == True:
+            for c in colliders:
+                c.draw(screen)
 
     pygame.display.flip()
 
